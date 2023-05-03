@@ -48,7 +48,7 @@ public class AlertRabbit {
 
         @Override
         public void execute(JobExecutionContext context) {
-            connection = (Connection) context.getJobDetail().getJobDataMap().get("connection");
+            Connection connection = (Connection) context.getJobDetail().getJobDataMap().get("connection");
            try {
                PreparedStatement statement = connection.prepareStatement(
                        "insert into rabbit(created_date) values (?)");
