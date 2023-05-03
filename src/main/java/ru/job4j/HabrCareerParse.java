@@ -5,6 +5,7 @@ import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import ru.job4j.utils.HabrCareerDateTimeParser;
 
 import java.io.IOException;
 
@@ -13,6 +14,7 @@ public class HabrCareerParse {
     private static final String PAGE_LINK = String.format("%s/vacancies/java_developer", SOURCE_LINK);
 
     public static void main(String[] args) throws IOException {
+        HabrCareerDateTimeParser parser = new HabrCareerDateTimeParser();
         Connection connection = Jsoup.connect(PAGE_LINK);
         Document document = connection.get();
         Elements rows = document.select(".vacancy-card__inner");
@@ -22,7 +24,7 @@ public class HabrCareerParse {
             Element linkElement = titleElement.child(0);
             String vacancyName = titleElement.text();
             String link = String.format("%s%s%n %s", SOURCE_LINK, linkElement.attr("href"),
-                    dataElement.attr("datetime"));
+                    parser.parse(dataElement.attr("datetime")));
             System.out.printf("%s %s%n", vacancyName, link);
         });
     }
