@@ -5,6 +5,9 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Properties;
 
 import static org.quartz.JobBuilder.*;
@@ -12,20 +15,30 @@ import static org.quartz.TriggerBuilder.*;
 import static org.quartz.SimpleScheduleBuilder.*;
 
 public class AlertRabbit {
+
+    private static  Connection connection;
+
     public static void main(String[] args) {
+        int interval = Integer.parseInt(readProperties().getProperty("rabbit.interval"));
         try {
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();
-            JobDetail job = newJob(Rabbit.class).build();
+            JobDataMap dataMap = new JobDataMap();
+            dataMap.put("connection", connection);
+            JobDetail job = newJob(Rabbit.class)
+                    .usingJobData(dataMap)
+                    .build();
             SimpleScheduleBuilder times = simpleSchedule()
-                    .withIntervalInMinutes(Integer.parseInt(readProperties().getProperty("rabbit.interval")))
+                    .withIntervalInMinutes(interval)
                     .repeatForever();
             Trigger trigger = newTrigger()
                     .startNow()
                     .withSchedule(times)
                     .build();
             scheduler.scheduleJob(job, trigger);
-        } catch (SchedulerException exception) {
+            Thread.sleep(10000);
+            scheduler.shutdown();
+        } catch (SchedulerException | InterruptedException exception) {
             exception.printStackTrace();
         }
     }
@@ -42,11 +55,17 @@ public class AlertRabbit {
         try (InputStream inputStream = AlertRabbit.class.getClassLoader().getResourceAsStream(
                 "rabbit.properties")) {
             config.load(inputStream);
-        } catch (IOException exception) {
+            Class.forName(config.getProperty("driver-class-name"));
+             connection = DriverManager.getConnection(
+                    config.getProperty("url"),
+                    config.getProperty("username"),
+                    config.getProperty("password"));
+        } catch (IOException | SQLException | ClassNotFoundException exception) {
             exception.printStackTrace();
         }
         return config;
     }
+
 }
 
 
