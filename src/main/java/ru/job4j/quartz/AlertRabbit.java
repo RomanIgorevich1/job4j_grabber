@@ -21,12 +21,7 @@ public class AlertRabbit {
 
     public static void main(String[] args) {
         int interval = Integer.parseInt(readProperties().getProperty("rabbit.interval"));
-        Timestamp timestamp = Timestamp.valueOf(dateTime);
         try {
-            PreparedStatement statement = connection.prepareStatement(
-                    "insert into rabbit(created_date) values (?)");
-            statement.setTimestamp(1, timestamp);
-            statement.execute();
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();
             JobDataMap dataMap = new JobDataMap();
@@ -47,8 +42,6 @@ public class AlertRabbit {
             scheduler.shutdown();
         } catch (SchedulerException | InterruptedException exception) {
             exception.printStackTrace();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -59,6 +52,15 @@ public class AlertRabbit {
 
         @Override
         public void execute(JobExecutionContext context) {
+            Timestamp timestamp = Timestamp.valueOf(dateTime);
+           try {
+               PreparedStatement statement = connection.prepareStatement(
+                       "insert into rabbit(created_date) values (?)");
+               statement.setTimestamp(1, timestamp);
+               statement.execute();
+           } catch (SQLException e) {
+               throw new RuntimeException(e);
+           }
             System.out.println("Rabbit runs here...");
             LocalDateTime time = (LocalDateTime) context.getJobDetail().getJobDataMap().get("date");
             System.out.println(time);
@@ -80,7 +82,4 @@ public class AlertRabbit {
         }
         return config;
     }
-
 }
-
-
