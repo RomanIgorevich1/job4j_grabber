@@ -5,9 +5,8 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.Properties;
 
 import static org.quartz.JobBuilder.*;
@@ -18,13 +17,21 @@ public class AlertRabbit {
 
     private static  Connection connection;
 
+    private static LocalDateTime dateTime = LocalDateTime.now();
+
     public static void main(String[] args) {
         int interval = Integer.parseInt(readProperties().getProperty("rabbit.interval"));
+        Timestamp timestamp = Timestamp.valueOf(dateTime);
         try {
+            PreparedStatement statement = connection.prepareStatement(
+                    "insert into rabbit(created_date) values (?)");
+            statement.setTimestamp(1, timestamp);
+            statement.execute();
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();
             JobDataMap dataMap = new JobDataMap();
             dataMap.put("connection", connection);
+            dataMap.put("date", dateTime);
             JobDetail job = newJob(Rabbit.class)
                     .usingJobData(dataMap)
                     .build();
@@ -40,13 +47,21 @@ public class AlertRabbit {
             scheduler.shutdown();
         } catch (SchedulerException | InterruptedException exception) {
             exception.printStackTrace();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
     public static class Rabbit implements Job {
+
+        public Rabbit() {
+        }
+
         @Override
         public void execute(JobExecutionContext context) {
             System.out.println("Rabbit runs here...");
+            LocalDateTime time = (LocalDateTime) context.getJobDetail().getJobDataMap().get("date");
+            System.out.println(time);
         }
     }
 
