@@ -30,6 +30,26 @@ public class Post {
         return created;
     }
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setLink(String link) {
+        this.link = link;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setCreated(LocalDateTime created) {
+        this.created = created;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -45,5 +65,15 @@ public class Post {
     @Override
     public int hashCode() {
         return Objects.hash(id, link);
+    }
+
+    @Override
+    public String toString() {
+        return "{" + "id=" + id + '\n'
+                + "title='" + title + '\n'
+                + "link='" + link + '\n'
+                + "description='" + description + '\n'
+                + "created=" + created + '}' + '\n';
+
     }
 }
