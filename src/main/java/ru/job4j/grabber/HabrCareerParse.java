@@ -16,7 +16,7 @@ public class HabrCareerParse {
     public static void main(String[] args) throws IOException {
         HabrCareerDateTimeParser parser = new HabrCareerDateTimeParser();
         HabrCareerParse careerParse = new HabrCareerParse();
-        for (int i = 1; i < 2; i++) {
+        for (int i = 1; i < 5; i++) {
             Connection connection =
                     Jsoup.connect(PAGE_LINK.formatted(SOURCE_LINK, i));
             Document document = connection.get();
