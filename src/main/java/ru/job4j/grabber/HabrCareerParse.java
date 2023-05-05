@@ -30,7 +30,7 @@ public class HabrCareerParse implements Parse {
     public List<Post> list(String link) throws IOException {
         List<Post> postList = new ArrayList<>();
         HabrCareerParse careerParse = new HabrCareerParse(dateTimeParser);
-        for (int i = 1; i < 2; i++) {
+        for (int i = 1; i < 5; i++) {
             Connection connection =
                     Jsoup.connect(PAGE_LINK.formatted(SOURCE_LINK, i));
             Document document = connection.get();
