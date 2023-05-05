@@ -5,6 +5,9 @@ import org.quartz.impl.StdSchedulerFactory;
 import ru.job4j.grabber.utils.HabrCareerDateTimeParser;
 
 import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.Properties;
 
 import static org.quartz.JobBuilder.newJob;
@@ -12,20 +15,31 @@ import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 
 public class Grabber implements Grab {
-    private final Parse parse;
-    private final Store store;
-    private final Scheduler scheduler;
-    private final int time;
 
-    public Grabber(Parse parse, Store store, Scheduler scheduler, int time) {
-        this.parse = parse;
-        this.store = store;
-        this.scheduler = scheduler;
-        this.time = time;
+    private Properties config() {
+        var config = new Properties();
+        try (InputStream stream = Grabber.class.getClassLoader()
+                .getResourceAsStream("app.properties")) {
+            config.load(stream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return config;
+    }
+
+    private Scheduler scheduler() throws SchedulerException {
+        Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+        scheduler.start();
+       return scheduler;
+    }
+
+    private Store store() {
+        return new PsqlStore(config());
     }
 
     @Override
-    public void start() throws SchedulerException {
+    public void start(Parse parse, Store store, Scheduler scheduler) throws SchedulerException {
+        int interval = Integer.parseInt(config().getProperty("time"));
         JobDataMap data = new JobDataMap();
         data.put("store", store);
         data.put("parse", parse);
@@ -33,7 +47,7 @@ public class Grabber implements Grab {
                 .usingJobData(data)
                 .build();
         SimpleScheduleBuilder times = simpleSchedule()
-                .withIntervalInSeconds(time)
+                .withIntervalInSeconds(interval)
                 .repeatForever();
         Trigger trigger = newTrigger()
                 .startNow()
@@ -60,17 +74,33 @@ public class Grabber implements Grab {
         }
     }
 
-    public static void main(String[] args) throws IOException, SchedulerException {
-        var config = new Properties();
-        try (InputStream stream = Grabber.class.getClassLoader()
-                .getResourceAsStream("app.properties")) {
-            config.load(stream);
-        }
-        Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-        scheduler.start();
-        var parse = new HabrCareerParse(new HabrCareerDateTimeParser());
-        var store = new PsqlStore(config);
-        var time = Integer.parseInt(config.getProperty("time"));
-        new Grabber(parse, store, scheduler, time).start();
+    public void web(Store store) {
+        new Thread(() -> {
+            try (ServerSocket server = new ServerSocket(Integer.parseInt(config().getProperty("port")))) {
+                while (!server.isClosed()) {
+                    Socket socket = server.accept();
+                    try (OutputStream outputStream = socket.getOutputStream()) {
+                        outputStream.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
+                        for (Post post : store.getAll()) {
+                            outputStream.write(post.toString().getBytes(Charset.forName("Windows-1251")));
+                            outputStream.write(System.lineSeparator().getBytes());
+                        }
+                    } catch (IOException exception) {
+                        exception.printStackTrace();
+                    }
+                }
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
+        }).start();
+    }
+
+    public static void main(String[] args) throws SchedulerException {
+        Grabber grab = new Grabber();
+        grab.config();
+        Scheduler scheduler = grab.scheduler();
+        Store store = grab.store();
+        grab.start(new HabrCareerParse(new HabrCareerDateTimeParser()), store, scheduler);
+        grab.web(store);
     }
 }
